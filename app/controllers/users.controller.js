@@ -162,7 +162,7 @@ class UsersController {
 	});
 
 	/**
-	 * @desc Modifie une utilisateur
+	 * @desc Modifie un utilisateur
 	 * @route PUT /api/users/
 	 * @access private
 	 */
@@ -211,6 +211,11 @@ class UsersController {
 		return res.status(501).json(updatedUser);
 	});
 
+	/**
+	 * @desc Supprime un utilisateur grâce à son identifiant.
+	 * @route DELETE /api/users/:id
+	 * @access private
+	 */
 	deleteUserById = asyncHandler(async (req, res, next) => {
 		let id = undefined;
 
