@@ -7,24 +7,18 @@ const Roles = require("../utils/roles.utils");
 
 const auth = (...roles) => {
 	return asyncHandler(async function (req, res, next) {
-		let token;
-
-		if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+		if (req.cookies.token) {
 			try {
-				token = req.headers.authorization.split(" ")[1];
+				const token = req.cookies.token;
 
 				const payload = jwtUtils.verifyToken(token);
 
-				const user = await User.findOne({ _id: payload.userData._id });
+				const user = await User.findOne({ _id: payload.id });
 
 				if (!user) {
 					res.status(401);
 					throw new Error("Echec de l'authentification");
 				}
-
-				console.log(roles.includes(user.role));
-				console.log(roles);
-				console.log(user.role);
 
 				if (!roles.includes(user.role)) {
 					res.status(401);
@@ -43,7 +37,7 @@ const auth = (...roles) => {
 			} catch (error) {
 				res.status(401);
 				if (error instanceof jwt.TokenExpiredError) {
-					throw new Error().json({ error: "Token expiré" });
+					throw new Error("Token expiré");
 				}
 				throw new Error(error.message);
 			}

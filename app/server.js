@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+var cookieParser = require('cookie-parser');
 
 const UsersRoute = require("./routes/users.route");
 const ClientsController = require("./routes/clients.route");
@@ -17,6 +18,7 @@ const PORT = Number(process.env.PORT || 8080);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(cookieParser());
 
 app.get("/", (req, res) => res.status(200).send("<h1>Hello i'am  API</h1>"));
 
