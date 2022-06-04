@@ -1,6 +1,7 @@
 const User = require("../models/user.model").model;
 const bcrypt = require("bcrypt");
 const jwt = require("../utils/jwt.utils");
+const ObjectId = require("mongoose").Types.ObjectId;
 
 const Roles = require("../utils/roles.utils");
 
@@ -43,7 +44,7 @@ class UsersController {
 		const token = jwt.generateToken(userFound);
 
 		// * Envoie de la réponse
-		return res.status(201).json({
+		return res.status(200).json({
 			id: userFound._id,
 			username: userFound.username,
 			email: userFound.email,
@@ -58,18 +59,66 @@ class UsersController {
 	 * @access private
 	 */
 	getAllUsers = async (req, res, next) => {
+		// * Vérifie que l'utilisateur a le droit de récup tout les users
 		if (req.user.role != Roles.Admin) {
 			res.status(401);
 			throw new Error("Vous n'avez pas le niveau d'acces nécessaire !");
 		}
 
-        let users = await User.find();
+		// * Récupere tous les utilisateurs.
+		const userFound = await User.find();
 
-		return res.status(200).json(users);
+		// * Filtre les données à conservé.
+		const allUsers = userFound.map(user => ({
+			id: user._id,
+			username: user.username,
+			email: user.email,
+			role: user.role,
+			createdAt: user.createdAt,
+		}));
+
+		return res.status(200).json(allUsers);
 	};
 
-	getUsersById = async (req, res, next) => {
-		return res.status(501).json({ message: "In developpement" });
+	/**
+	 * @desc Renvoie l'utilisateur qui corresponds à l'id
+	 * @route POST /api/users/:id
+	 * @access private
+	 */
+	getUserById = async (req, res, next) => {
+		let id = undefined;
+
+		// * Vérifie si l'id est valide
+		if (ObjectId.isValid(req.params.id)) {
+			id = new ObjectId(req.params.id);
+		} else {
+			res.status(400);
+			throw new Error("L'identifiant saisie est incorrect !");
+		}
+
+		// * Si l'id n'est pas celui du propriétaire, on vérifié que l'utilisateur est un admin
+		if (req.user.id != id) {
+			if (req.user.role != Roles.Admin) {
+				res.status(401);
+				throw new Error("Vous n'avez pas le niveau d'acces nécessaire !");
+			}
+		}
+
+		// * Récupération de l'utilisateur choisie
+		const user = await User.findOne({ _id: id });
+
+		if (!user) {
+			res.status(404);
+			throw new Error("Utilisateur non trouvé !");
+		}
+
+		return res.status(200).json({
+			id: user._id,
+			username: user.username,
+			email: user.email,
+			role: user.role,
+			createdAt: user.createdAt,
+		});
 	};
 
 	/**
@@ -85,7 +134,7 @@ class UsersController {
 			throw new Error("Les champs username, email et password sont obligatoire");
 		}
 
-		// Vérifie si il y a déja un utilisateur avec les même données
+		// * Vérifie si il y a déja un utilisateur avec les même données
 		const userExist = await User.findOne({ email });
 
 		if (userExist) {
@@ -93,14 +142,14 @@ class UsersController {
 			throw new Error("L'utilisateur existe déja.");
 		}
 
-		// Ajout en BDD
+		// * Ajout en BDD
 		let createdUser = await User.create({
 			username: username,
 			email: email,
 			password: await this.#hashPassword(password),
 		});
 
-		// Génération du token
+		// * Génération du token
 		const token = jwt.generateToken(createdUser);
 
 		return res.status(201).json({
@@ -132,10 +181,10 @@ class UsersController {
 
 		const userData = jwt.verifyToken(token).userData;
 
-		/*if (userData.email != email && userData.role == "user") {
+		if (userData.email != email && userData.role == "user") {
             res.status(403);
             throw new Error("Vous n'avez pas l'autorisation pour modifié un autre utilisateur");
-        }*/
+        }
 
 		const userFound = await User.findOne({ email });
 
@@ -159,14 +208,43 @@ class UsersController {
 			new: true,
 		});
 
-		console.log(this.updatedUser);
-
-		return res.status(501).json({ message: "In developpement" });
+		return res.status(501).json(updatedUser);
 	});
 
-	deleteUser = async (req, res, next) => {
-		return res.status(501).json({ message: "In developpement" });
-	};
+	deleteUserById = asyncHandler(async (req, res, next) => {
+		let id = undefined;
+
+		// * Vérifie si l'id est valide
+		if (ObjectId.isValid(req.params.id)) {
+			id = new ObjectId(req.params.id);
+		} else {
+			res.status(400);
+			throw new Error("L'identifiant saisie est incorrect !");
+		}
+
+		// * On vérifié que l'utilisateur est un admin
+		if (req.user.role != Roles.Admin) {
+			res.status(401);
+			throw new Error("Vous n'avez pas le niveau d'acces nécessaire !");
+		}
+
+		// * Suppresion de l'utilisateur choisi
+		const deletedUser = await User.findByIdAndDelete(id);
+
+		// * Si l'id qui corresponds à l'utilisateur n'est pas trouvé, on lance une erreur.
+		if (!deletedUser) {
+			res.status(404);
+			throw new Error("Utilisateur non trouvé avec cette identifiant !");
+		}
+
+		// * Si il est supprimer on renvoie les infos
+		return res.status(200).json({
+			id: deletedUser._id,
+			username: deletedUser.username,
+			email: deletedUser.email,
+			role: deletedUser.role,
+		});
+	});
 
 	/**
 	 *
