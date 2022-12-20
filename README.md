@@ -16,3 +16,16 @@ $ git clone git@github.com:jeremw264/NodeAPI.git
 ```bash
 $ git clone https://github.com/jeremw264/NodeAPI.git
 ```
+
+### .env exemple
+
+```env
+NODE_ENV= development
+
+JWT_KEY=<key>
+
+DB_HOST="localhost"
+DB_PORT = 27017
+DB_NAME = <dbName>
+
+```
